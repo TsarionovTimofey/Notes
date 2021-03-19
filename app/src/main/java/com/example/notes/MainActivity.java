@@ -16,27 +16,26 @@ import android.view.View;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerViewNotes;
     private final ArrayList<Note> notes = new ArrayList<Note>();
     private NotesAdapter adapter;
-    private NotesDBHelper dbHelper;
-    private SQLiteDatabase database;
+    private NotesDatabase notesDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        notesDatabase = NotesDatabase.getInstance(this);
+        getData();
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.hide();
         }
         recyclerViewNotes = findViewById(R.id.recyclerViewNotes);
-        dbHelper = new NotesDBHelper(this);
-        database = dbHelper.getWritableDatabase();
-        getData();
         adapter = new NotesAdapter(notes);
         recyclerViewNotes.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewNotes.setAdapter(adapter);
@@ -67,10 +66,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void removeNote(int position) {
+        Note note = notes.get(position);
+        notesDatabase.notesDao().deleteNote(note);
         int id = notes.get(position).getId();
-        String where = NotesContract.NotesEntry._ID + " = ?";
-        String[] whereArgs = new String[]{Integer.toString(id)};
-        database.delete(NotesContract.NotesEntry.TABLE_NAME, where, whereArgs);
         getData();
         adapter.notifyDataSetChanged();
     }
@@ -81,20 +79,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getData() {
+        List<Note> notesFromDB = notesDatabase.notesDao().getAllNotes();
         notes.clear();
-        String selection = NotesContract.NotesEntry.COLUMN_PRIORITY + " < ?";
-        String[] selectionArgs = new String[]{"2"};
-        Cursor cursor = database.query(NotesContract.NotesEntry.TABLE_NAME, null, selection, selectionArgs, null, null, NotesContract.NotesEntry.COLUMN_DAY_OF_THE_WEEK, null);
-        while (cursor.moveToNext()) {
-            int id = cursor.getInt(cursor.getColumnIndex(NotesContract.NotesEntry._ID));
-            String title = cursor.getString(cursor.getColumnIndex(NotesContract.NotesEntry.COLUMN_TITLE));
-            String description = cursor.getString(cursor.getColumnIndex(NotesContract.NotesEntry.COLUMN_DESCRIPTION));
-            int dayOfTheWeek = cursor.getInt(cursor.getColumnIndex(NotesContract.NotesEntry.COLUMN_DAY_OF_THE_WEEK));
-            int priority = cursor.getInt(cursor.getColumnIndex(NotesContract.NotesEntry.COLUMN_PRIORITY));
-            Note note = new Note(id, title, description, dayOfTheWeek, priority);
-            notes.add(note);
-        }
-        cursor.close();
+        notes.addAll(notesFromDB);
     }
 
 }
