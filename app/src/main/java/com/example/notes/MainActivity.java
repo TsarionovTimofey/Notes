@@ -3,6 +3,8 @@ package com.example.notes;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -68,9 +70,6 @@ public class MainActivity extends AppCompatActivity {
     public void removeNote(int position) {
         Note note = notes.get(position);
         notesDatabase.notesDao().deleteNote(note);
-        int id = notes.get(position).getId();
-        getData();
-        adapter.notifyDataSetChanged();
     }
 
     public void onClickAddNote(View view) {
@@ -79,9 +78,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getData() {
-        List<Note> notesFromDB = notesDatabase.notesDao().getAllNotes();
-        notes.clear();
-        notes.addAll(notesFromDB);
+        LiveData<List<Note>> notesFromDB = notesDatabase.notesDao().getAllNotes();
+        notesFromDB.observe(this, new Observer<List<Note>>() {
+            @Override
+            public void onChanged(List<Note> notesFromLiveData) {
+                notes.clear();
+                notes.addAll(notesFromLiveData);
+                adapter.notifyDataSetChanged();
+            }
+        });
     }
 
 }
